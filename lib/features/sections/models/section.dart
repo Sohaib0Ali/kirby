@@ -216,13 +216,8 @@ class Section {
 
   bool _checkSection5Missing() {
     final text = parsedDataAsText;
-    if (text == null || text.trim().isEmpty) return true;
-    
-    // Check if it contains missing sections indicator
-    return text.contains('Missing Sections') || 
-           text.contains('CRITICAL') ||
-           text.contains('Sections Completed: 0') ||
-           text.contains('Approval Probability: Low');
+    // Section 5 is complete if it has any content (it's a database summary)
+    return text == null || text.trim().isEmpty;
   }
 
   // Get missing fields for Section 1
@@ -232,18 +227,17 @@ class Section {
     final data = parsedData;
     if (data == null) return ['All fields missing'];
     
-    final criticalFields = [
-      'Miles at Failure',
-      'Failure Codes', 
-      'Troubleshooting Forms',
-      'TCM Serial Numbers',
-      'Adaptation Analysis',
-      'Driveline Analysis',
-      'Threshold Analysis',
-      'Relevant Emails',
-      'Additional Items',
-    ];
+    // Only check fields that actually exist in the data structure
+    // Don't add fields that aren't part of the response
+    final missingFieldsList = <String>[];
     
-    return criticalFields.where((field) => _isFieldMissing(data[field])).toList();
+    // Check all fields in the actual data for missing values
+    for (final entry in data.entries) {
+      if (_isFieldMissing(entry.value)) {
+        missingFieldsList.add(entry.key);
+      }
+    }
+    
+    return missingFieldsList;
   }
 }

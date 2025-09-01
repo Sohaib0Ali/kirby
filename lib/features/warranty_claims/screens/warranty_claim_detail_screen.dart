@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../sections/models/repair_claim.dart';
 import '../../sections/models/section.dart';
@@ -20,9 +21,8 @@ class WarrantyClaimDetailScreen extends StatefulWidget {
 class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
   List<Section> _filteredSections = [];
   String _statusFilter = 'All';
-  String _sortBy = 'section_number';
-  bool _showMissingDataOnly = false;
-  String _searchQuery = '';
+  Map<int, bool> _expandedSections = {};
+  bool _sectionsVisible = true;
 
   @override
   void initState() {
@@ -34,40 +34,21 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
   void _applyFilters() {
     setState(() {
       _filteredSections = widget.claim.sections.where((section) {
-        // Status filter
-        bool statusMatch = _statusFilter == 'All' || 
-            (_statusFilter == 'Complete' && !section.hasMissingData) ||
-            (_statusFilter == 'Missing Data' && section.hasMissingData) ||
-            (_statusFilter == 'Incomplete' && section.hasMissingData);
-        
-        // Missing data filter
-        bool missingDataMatch = !_showMissingDataOnly || section.hasMissingData;
-        
-        // Search filter
-        bool searchMatch = _searchQuery.isEmpty ||
-            section.sectionName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            section.sectionNumber.toString().contains(_searchQuery);
-        
-        return statusMatch && missingDataMatch && searchMatch;
+        // Status filter - updated for new filter options
+        return _statusFilter == 'All' || 
+            (_statusFilter == 'Completed' && !section.hasMissingData) ||
+            (_statusFilter == 'Missing Data' && section.hasMissingData);
       }).toList();
       
-      // Apply sorting
-      _sortSections();
+      // Sort by section number
+      _filteredSections.sort((a, b) => a.sectionNumber.compareTo(b.sectionNumber));
     });
   }
-
-  void _sortSections() {
-    switch (_sortBy) {
-      case 'section_number':
-        _filteredSections.sort((a, b) => a.sectionNumber.compareTo(b.sectionNumber));
-        break;
-      case 'section_name':
-        _filteredSections.sort((a, b) => a.sectionName.compareTo(b.sectionName));
-        break;
-      case 'completion':
-        _filteredSections.sort((a, b) => (a.hasMissingData ? 0 : 1).compareTo(b.hasMissingData ? 0 : 1));
-        break;
-    }
+  
+  void _toggleSectionsVisibility() {
+    setState(() {
+      _sectionsVisible = !_sectionsVisible;
+    });
   }
 
   @override
@@ -120,6 +101,35 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                 ),
               ),
               
+              // Filters Section - Moved to top
+              FadeInUp(
+                delay: const Duration(milliseconds: 100),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: WarrantyClaimsFilter(
+                    onStatusFilter: (status) {
+                      _statusFilter = status;
+                      _applyFilters();
+                    },
+                    onSortChanged: (sortBy) {
+                      // Not used in simplified filter
+                    },
+                    onMissingDataFilter: (showMissingOnly) {
+                      // Not used in details screen
+                    },
+                    onSearchFilter: (query) {
+                      // Not used in simplified filter
+                    },
+                    onClearFilters: () {
+                      _statusFilter = 'All';
+                      _applyFilters();
+                    },
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
               // Content
               Expanded(
                 child: SingleChildScrollView(
@@ -129,89 +139,134 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                     children: [
                       // Claim Overview Card
                       FadeInUp(
-                        delay: const Duration(milliseconds: 100),
+                        delay: const Duration(milliseconds: 200),
                         child: _buildClaimOverviewCard(),
                       ),
                       
                       const SizedBox(height: 20),
                       
-                      // Vehicle Information Card
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 200),
-                        child: _buildVehicleInfoCard(),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Complaint Card
+                      // Sections Header with Global Expand/Collapse
                       FadeInUp(
                         delay: const Duration(milliseconds: 300),
-                        child: _buildComplaintCard(),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Filters Section
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 400),
-                        child: WarrantyClaimsFilter(
-                          onStatusFilter: (status) {
-                            _statusFilter = status;
-                            _applyFilters();
-                          },
-                          onSortChanged: (sortBy) {
-                            _sortBy = sortBy;
-                            _applyFilters();
-                          },
-                          onMissingDataFilter: (showMissingOnly) {
-                            _showMissingDataOnly = showMissingOnly;
-                            _applyFilters();
-                          },
-                          onSearchFilter: (query) {
-                            _searchQuery = query;
-                            _applyFilters();
-                          },
-                          onClearFilters: () {
-                            _statusFilter = 'All';
-                            _sortBy = 'section_number';
-                            _showMissingDataOnly = false;
-                            _searchQuery = '';
-                            _applyFilters();
-                          },
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Sections Header
-                      FadeInUp(
-                        delay: const Duration(milliseconds: 500),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Sections Data (${_filteredSections.length}/${widget.claim.sections.length})',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.primary.withOpacity(0.1),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.assignment_outlined,
                                   color: AppColors.primary,
+                                  size: 20,
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'SECTIONS DATA',
+                                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.grey,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${_filteredSections.length}/${widget.claim.sections.length} sections',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.grey,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Show/Hide Sections Toggle
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _toggleSectionsVisibility,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _sectionsVisible 
+                                          ? AppColors.primary.withOpacity(0.1)
+                                          : AppColors.lightGrey.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: _sectionsVisible 
+                                            ? AppColors.primary.withOpacity(0.2)
+                                            : AppColors.lightGrey.withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _sectionsVisible 
+                                              ? Icons.keyboard_arrow_up
+                                              : Icons.keyboard_arrow_down,
+                                          color: _sectionsVisible 
+                                              ? AppColors.primary
+                                              : AppColors.grey,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _sectionsVisible ? 'Hide' : 'Show',
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: _sectionsVisible 
+                                                ? AppColors.primary
+                                                : AppColors.grey,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       
                       const SizedBox(height: 12),
                       
-                      // Sections List
-                      ..._filteredSections.asMap().entries.map((entry) {
+                      // Sections List - Show/Hide based on toggle
+                      if (_sectionsVisible) ..._filteredSections.asMap().entries.map((entry) {
                         final index = entry.key;
                         final section = entry.value;
                         return FadeInUp(
-                          delay: Duration(milliseconds: 600 + (index * 100)),
+                          delay: Duration(milliseconds: 400 + (index * 100)),
                           child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: _buildSectionCard(section),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: _buildExpandableSectionCard(section),
                           ),
                         );
                       }),
@@ -315,358 +370,211 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
           
           const SizedBox(height: 24),
           
-          // Progress Section
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'COMPLETION PROGRESS',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.grey,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${widget.claim.sections.length} sections total',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _getProgressColor().withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _getProgressColor().withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      '${widget.claim.completionPercentage.toInt()}%',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: _getProgressColor(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.lightGrey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: widget.claim.completionPercentage / 100,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _getProgressColor(),
-                          _getProgressColor().withOpacity(0.8),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _getProgressColor().withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVehicleInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.08),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          // Sections Summary
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.directions_car, color: AppColors.primary, size: 22),
+              Icon(
+                Icons.assignment_outlined,
+                color: AppColors.primary,
+                size: 20,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'VEHICLE INFORMATION',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.grey,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Vehicle Details & Specifications',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.grey,
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 8),
+              Text(
+                'SECTIONS OVERVIEW',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.grey,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${widget.claim.sections.length} sections',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.lightGrey.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.lightGrey.withOpacity(0.5),
-                width: 1,
-              ),
-            ),
-            child: Text(
-              widget.claim.vehicleInfo,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.6,
-                color: AppColors.darkGrey,
-              ),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildComplaintCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.orange.withOpacity(0.08),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.report_problem_outlined, color: Colors.orange.shade700, size: 22),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'COMPLAINT DESCRIPTION',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.grey,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Customer Reported Issues',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.orange.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Text(
-              widget.claim.complaint,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.6,
-                color: AppColors.darkGrey,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildSectionCard(Section section) {
+  Widget _buildExpandableSectionCard(Section section) {
+    final isExpanded = _expandedSections[section.sectionNumber] ?? false;
+    
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: section.hasMissingData 
               ? Colors.orange.withOpacity(0.3)
-              : AppColors.success.withOpacity(0.3),
-          width: 2,
+              : AppColors.success.withOpacity(0.2),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: AppColors.primary.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Header
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: section.hasMissingData 
-                      ? Colors.orange.withOpacity(0.2)
-                      : AppColors.success.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '${section.sectionNumber}',
-                    style: TextStyle(
-                      color: section.hasMissingData 
-                          ? Colors.orange
-                          : AppColors.success,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          // Compact Header - Always Visible
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                setState(() {
+                  _expandedSections[section.sectionNumber] = !isExpanded;
+                });
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
                   children: [
-                    Text(
-                      section.sectionName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    // Section Number Circle
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
                         color: section.hasMissingData 
-                            ? Colors.orange.withOpacity(0.1)
-                            : AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                            ? Colors.orange.withOpacity(0.15)
+                            : AppColors.success.withOpacity(0.15),
+                        shape: BoxShape.circle,
                       ),
-                      child: Text(
-                        section.hasMissingData ? 'Missing Data' : 'Complete',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: section.hasMissingData 
-                              ? Colors.orange
-                              : AppColors.success,
-                          fontWeight: FontWeight.w600,
+                      child: Center(
+                        child: Text(
+                          '${section.sectionNumber}',
+                          style: TextStyle(
+                            color: section.hasMissingData 
+                                ? Colors.orange.shade700
+                                : AppColors.success,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Section Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getSectionDisplayName(section.sectionNumber),
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: section.hasMissingData 
+                                      ? Colors.orange.withOpacity(0.1)
+                                      : AppColors.success.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  section.hasMissingData ? 'Missing Data' : 'Complete',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: section.hasMissingData 
+                                        ? Colors.orange.shade700
+                                        : AppColors.success,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Expand/Collapse Icon
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.lightGrey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        color: AppColors.grey,
+                        size: 20,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                section.hasMissingData ? Icons.warning : Icons.check_circle,
-                color: section.hasMissingData ? Colors.orange : AppColors.success,
-                size: 24,
-              ),
-            ],
+            ),
           ),
-          
-          const SizedBox(height: 20),
-          
-          // Section Data
-          _buildSectionData(section),
-          
-          // Missing Fields Summary (only for sections other than 1)
-          if (section.sectionNumber != 1 && section.hasMissingData && section.missingFields.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _buildMissingFieldsCard(section.missingFields),
+          // Expandable Content
+          if (isExpanded) ...[
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.lightGrey.withOpacity(0.2),
+                          AppColors.lightGrey,
+                          AppColors.lightGrey.withOpacity(0.2),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildSectionData(section),
+                ],
+              ),
+            ),
           ],
         ],
       ),
     );
   }
 
+  String _getSectionDisplayName(int sectionNumber) {
+    switch (sectionNumber) {
+      case 1:
+        return 'Warranty Claim Summary';
+      case 2:
+        return 'Attachments Overview';
+      case 3:
+        return 'Technician Narrative';
+      case 4:
+        return 'Service Report Narrative';
+      case 5:
+        return 'Claim Submission Recommendation';
+      default:
+        return 'Section $sectionNumber';
+    }
+  }
+
+
   Widget _buildSectionData(Section section) {
+    // When Missing Data filter is selected, show only missing fields
+    if (_statusFilter == 'Missing Data' && section.hasMissingData) {
+      return _buildMissingFieldsOnlyData(section);
+    }
+    
     // Handle different section types with appropriate formatting
     switch (section.sectionNumber) {
       case 1:
@@ -684,60 +592,138 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
     }
   }
 
-  // Section 1: Vehicle and diagnostic data
+  // Section 1: Vehicle and diagnostic data - Reorganized into categorized portions
   Widget _buildSection1Data(Section section) {
     final data = section.parsedData;
     if (data == null || data.isEmpty) {
       return _buildNoDataWidget();
     }
 
-    final completedFields = data.entries.where((entry) => 
-        entry.value != null && entry.value.toString().trim().isNotEmpty).length;
-    final totalFields = data.entries.length;
-    final missingCount = section.missingFields.length;
+    // Categorize data into related portions
+    final vehicleData = <String, dynamic>{};
+    final diagnosticData = <String, dynamic>{};
+    final warrantyData = <String, dynamic>{};
+    final customerData = <String, dynamic>{};
+    
+    // Categorize each field
+    for (final entry in data.entries) {
+      final key = entry.key.toLowerCase();
+      if (key.contains('make') || key.contains('model') || key.contains('vin') || 
+          key.contains('year') || key.contains('engine') || key.contains('trim')) {
+        vehicleData[entry.key] = entry.value;
+      } else if (key.contains('dtc') || key.contains('diagnostic') || key.contains('code') ||
+                 key.contains('mileage') || key.contains('odometer')) {
+        diagnosticData[entry.key] = entry.value;
+      } else if (key.contains('coverage') || key.contains('warranty') || key.contains('service') ||
+                 key.contains('date') || key.contains('vocation')) {
+        warrantyData[entry.key] = entry.value;
+      } else if (key.contains('complaint') || key.contains('customer') || key.contains('concern')) {
+        customerData[entry.key] = entry.value;
+      } else {
+        // Default to vehicle data for uncategorized fields
+        vehicleData[entry.key] = entry.value;
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with completion summary
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                section.hasMissingData 
-                    ? Colors.orange.withOpacity(0.08)
-                    : AppColors.success.withOpacity(0.08),
-                section.hasMissingData 
-                    ? Colors.orange.withOpacity(0.04)
-                    : AppColors.success.withOpacity(0.04),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: section.hasMissingData 
-                  ? Colors.orange.withOpacity(0.2)
-                  : AppColors.success.withOpacity(0.2),
-              width: 1,
-            ),
+        // Vehicle Information Portion
+        if (vehicleData.isNotEmpty) ...[
+          _buildDataPortion(
+            'Vehicle Information',
+            vehicleData,
+            section.missingFields,
+            Icons.directions_car,
+            AppColors.primary,
           ),
-          child: Row(
+          const SizedBox(height: 16),
+        ],
+        
+        // Diagnostic Data Portion
+        if (diagnosticData.isNotEmpty) ...[
+          _buildDataPortion(
+            'Diagnostic Data',
+            diagnosticData,
+            section.missingFields,
+            Icons.build_outlined,
+            Colors.blue,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Warranty Information Portion
+        if (warrantyData.isNotEmpty) ...[
+          _buildDataPortion(
+            'Warranty Information',
+            warrantyData,
+            section.missingFields,
+            Icons.verified_outlined,
+            Colors.green,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Customer Data Portion
+        if (customerData.isNotEmpty) ...[
+          _buildDataPortion(
+            'Customer Information',
+            customerData,
+            section.missingFields,
+            Icons.person_outlined,
+            Colors.orange,
+          ),
+        ],
+      ],
+    );
+  }
+  
+  // Helper method to build categorized data portions
+  Widget _buildDataPortion(
+    String title,
+    Map<String, dynamic> data,
+    List<String> missingFields,
+    IconData icon,
+    Color color,
+  ) {
+    final availableCount = data.entries.where((entry) => 
+        entry.value != null && entry.value.toString().trim().isNotEmpty).length;
+    final totalCount = data.entries.length;
+    final missingCount = data.entries.where((entry) => 
+        missingFields.contains(entry.key)).length;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: missingCount > 0 
+              ? Colors.orange.withOpacity(0.3)
+              : color.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Portion Header
+          Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: section.hasMissingData 
-                      ? Colors.orange.withOpacity(0.15)
-                      : AppColors.success.withOpacity(0.15),
+                  color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.build_outlined, 
-                  color: section.hasMissingData 
-                      ? Colors.orange.shade600
-                      : AppColors.success, 
-                  size: 22
-                ),
+                child: Icon(icon, color: color, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -745,20 +731,18 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'VEHICLE & DIAGNOSTIC DATA',
+                      title.toUpperCase(),
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: section.hasMissingData 
-                            ? Colors.orange.shade700
-                            : AppColors.primary,
-                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.grey,
+                        letterSpacing: 0.8,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Text(
-                          '$completedFields/$totalFields fields completed',
+                          '$availableCount/$totalCount available',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.grey,
                             fontWeight: FontWeight.w500,
@@ -789,35 +773,17 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        
-        // Data fields
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.lightGrey.withOpacity(0.25),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
+          const SizedBox(height: 16),
+          
+          // Data fields for this portion
+          Column(
             children: data.entries.map((entry) {
-              final isHighlighted = section.missingFields.contains(entry.key);
+              final isHighlighted = missingFields.contains(entry.key);
               return _buildDataField(entry.key, entry.value, isHighlighted);
             }).toList(),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -847,7 +813,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'FILES & ATTACHMENTS',
+                    'ATTACHMENTS OVERVIEW',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: AppColors.grey,
@@ -1089,7 +1055,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
     );
   }
 
-  // Section 5: Summary and conclusions
+  // Section 5: Summary and conclusions - No missing data highlighting
   Widget _buildSection5Data(Section section) {
     final text = section.parsedDataAsText;
     if (text == null || text.trim().isEmpty) {
@@ -1124,7 +1090,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Final assessment and recommendations',
+                    'Final assessment and recommendations - Database Summary',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppColors.grey,
                     ),
@@ -1231,7 +1197,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
           child: Column(
             children: data.entries.map((entry) {
               final isHighlighted = section.missingFields.contains(entry.key);
-              return _buildDataField(entry.key, entry.value, isHighlighted);
+              return _buildDataField(entry.key, entry.value, isHighlighted, section.sectionNumber);
             }).toList(),
           ),
         ),
@@ -1239,7 +1205,32 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
     );
   }
 
-  Widget _buildMissingFieldsCard(List<String> missingFields) {
+  // New method to show only missing fields when Missing Data filter is active
+  Widget _buildMissingFieldsOnlyData(Section section) {
+    if (section.missingFields.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.success.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.success.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'All fields are complete',
+              style: TextStyle(
+                color: AppColors.success,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1255,37 +1246,46 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
               Icon(Icons.warning, color: Colors.orange, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Missing Fields (${missingFields.length})',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade700,
+                'Missing Fields (${section.missingFields.length})',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: missingFields.map((field) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                field,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.orange.shade700,
-                  fontWeight: FontWeight.w500,
+          ...section.missingFields.map((field) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.orange.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.orange, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    field,
+                    style: TextStyle(
+                      color: AppColors.darkGrey,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
-              ),
-            )).toList(),
-          ),
+              ],
+            ),
+          )).toList(),
         ],
       ),
     );
   }
+
 
   Color _getStatusColor() {
     switch (widget.claim.status) {
@@ -1313,32 +1313,25 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
     }
   }
 
-  Color _getProgressColor() {
-    if (widget.claim.completionPercentage == 100) {
-      return widget.claim.hasMissingData ? Colors.orange : AppColors.success;
-    } else if (widget.claim.completionPercentage >= 60) {
-      return Colors.orange;
-    } else {
-      return AppColors.error;
-    }
-  }
 
-  // Helper method to build individual data fields
-  Widget _buildDataField(String key, dynamic value, bool isHighlighted) {
+  // Helper method to build individual data fields with section-aware highlighting
+  Widget _buildDataField(String key, dynamic value, bool isHighlighted, [int? sectionNumber]) {
     final hasValue = value != null && value.toString().trim().isNotEmpty;
+    // Don't highlight missing data in Section 5 (summary)
+    final shouldHighlight = isHighlighted && (sectionNumber == null || sectionNumber != 5);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isHighlighted 
+        color: shouldHighlight 
             ? Colors.orange.withOpacity(0.06)
             : hasValue 
                 ? AppColors.success.withOpacity(0.05)
                 : AppColors.lightGrey.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isHighlighted 
+          color: shouldHighlight 
               ? Colors.orange.withOpacity(0.25)
               : hasValue 
                   ? AppColors.success.withOpacity(0.2)
@@ -1354,7 +1347,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: isHighlighted 
+              color: shouldHighlight 
                   ? Colors.orange.withOpacity(0.15)
                   : hasValue 
                       ? AppColors.success.withOpacity(0.15)
@@ -1362,12 +1355,12 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(
-              isHighlighted 
+              shouldHighlight 
                   ? Icons.warning_rounded
                   : hasValue 
                       ? Icons.check_rounded
                       : Icons.remove_rounded,
-              color: isHighlighted 
+              color: shouldHighlight 
                   ? Colors.orange.shade600
                   : hasValue 
                       ? AppColors.success
@@ -1387,14 +1380,14 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                         _formatFieldName(key),
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: isHighlighted 
+                          color: shouldHighlight 
                               ? Colors.orange.shade700 
                               : AppColors.primary,
                           letterSpacing: 0.3,
                         ),
                       ),
                     ),
-                    if (isHighlighted)
+                    if (shouldHighlight)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
@@ -1421,7 +1414,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isHighlighted 
+                      color: shouldHighlight 
                           ? Colors.orange.withOpacity(0.2)
                           : AppColors.lightGrey.withOpacity(0.2),
                       width: 1,
@@ -1434,7 +1427,7 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: hasValue 
                           ? AppColors.darkGrey
-                          : isHighlighted 
+                          : shouldHighlight 
                               ? Colors.orange.shade600
                               : AppColors.grey,
                       fontStyle: hasValue ? FontStyle.normal : FontStyle.italic,
@@ -1828,30 +1821,45 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (fileInfo['url'] != null) ...[
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.link,
-                          size: 14,
-                          color: Colors.blue.shade700,
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => _openPdfFile(fileInfo['url']),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.blue.shade600,
+                            Colors.blue.shade700,
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'View File',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.w500,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.picture_as_pdf,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Open PDF',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -1865,9 +1873,34 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
 
   // Helper method to parse file information
   Map<String, dynamic> _parseFileInfo(dynamic file) {
-    String fileString = file.toString();
+    // Handle JSON object with filename and url
+    if (file is Map<String, dynamic>) {
+      final fileName = file['filename'] ?? file['name'] ?? 'Unknown File';
+      final url = file['url'];
+      
+      // Determine file type from filename
+      String fileType = 'FILE';
+      if (fileName.toLowerCase().contains('.pdf')) {
+        fileType = 'PDF';
+      } else if (fileName.toLowerCase().contains('.doc') || fileName.toLowerCase().contains('.docx')) {
+        fileType = 'DOC';
+      } else if (fileName.toLowerCase().contains('.xls') || fileName.toLowerCase().contains('.xlsx')) {
+        fileType = 'XLS';
+      } else if (fileName.toLowerCase().contains('.jpg') || fileName.toLowerCase().contains('.jpeg') || fileName.toLowerCase().contains('.png')) {
+        fileType = 'IMG';
+      } else if (fileName.toLowerCase().contains('.mp4') || fileName.toLowerCase().contains('.avi')) {
+        fileType = 'VID';
+      }
+      
+      return {
+        'name': fileName,
+        'type': fileType,
+        'url': url,
+      };
+    }
     
-    // Try to extract URL if it looks like a URL
+    // Fallback for string format
+    String fileString = file.toString();
     String? url;
     String fileName = fileString;
     
@@ -1903,6 +1936,61 @@ class _WarrantyClaimDetailScreenState extends State<WarrantyClaimDetailScreen> {
       'type': fileType,
       'url': url,
     };
+  }
+
+  // Helper method to open PDF file
+  Future<void> _openPdfFile(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      
+      // Try different launch modes for better compatibility
+      bool launched = false;
+      
+      // First try with platformDefault mode
+      try {
+        launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (e) {
+        print('Platform default launch failed: $e');
+      }
+      
+      // If that fails, try with external browser
+      if (!launched) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (e) {
+          print('External application launch failed: $e');
+        }
+      }
+      
+      // If still fails, try with in-app web view
+      if (!launched) {
+        try {
+          launched = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        } catch (e) {
+          print('In-app web view launch failed: $e');
+        }
+      }
+      
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No app available to open PDF files. Please install a PDF viewer.'),
+            backgroundColor: AppColors.error,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error parsing URL: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Invalid PDF URL format'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   // Helper method to get file type color

@@ -25,8 +25,6 @@ class WarrantyClaimsFilter extends StatefulWidget {
 class _WarrantyClaimsFilterState extends State<WarrantyClaimsFilter> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatus = 'All';
-  String _selectedSort = 'section_number';
-  bool _showMissingDataOnly = false;
 
   @override
   void dispose() {
@@ -102,7 +100,7 @@ class _WarrantyClaimsFilterState extends State<WarrantyClaimsFilter> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'FILTERS & SEARCH',
+                              'FILTERS',
                               style: Theme.of(context).textTheme.labelMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primary,
@@ -168,49 +166,6 @@ class _WarrantyClaimsFilterState extends State<WarrantyClaimsFilter> {
                 ],
               ),
             ),
-            SizedBox(height: isCompact ? 12 : 16),
-            
-            // Search Bar - Responsive
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.lightGrey.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.lightGrey.withOpacity(0.25),
-                  width: 1,
-                ),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: widget.onSearchFilter,
-                decoration: InputDecoration(
-                  hintText: isCompact ? 'Search sections...' : 'Search sections by name or number...',
-                  hintStyle: TextStyle(
-                    color: AppColors.grey,
-                    fontSize: isCompact ? 13 : 14,
-                  ),
-                  prefixIcon: Container(
-                    padding: EdgeInsets.all(isCompact ? 10 : 12),
-                    child: Icon(
-                      Icons.search_rounded,
-                      color: AppColors.primary,
-                      size: isCompact ? 18 : 20,
-                    ),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 12 : 16,
-                    vertical: isCompact ? 12 : 16,
-                  ),
-                ),
-                style: TextStyle(
-                  color: AppColors.darkGrey,
-                  fontWeight: FontWeight.w500,
-                  fontSize: isCompact ? 13 : 14,
-                ),
-              ),
-            ),
-            SizedBox(height: isCompact ? 12 : 16),
             
             // Status Filter Section - Responsive
             Container(
@@ -246,302 +201,17 @@ class _WarrantyClaimsFilterState extends State<WarrantyClaimsFilter> {
                     ],
                   ),
                   SizedBox(height: isCompact ? 8 : 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth < 400) {
-                        // Stack vertically for very small screens
-                        return Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(child: _buildStatusChip('All', Icons.list_alt, null, isCompact)),
-                                const SizedBox(width: 6),
-                                Expanded(child: _buildStatusChip('Complete', Icons.check_circle_outline, AppColors.success, isCompact)),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Expanded(child: _buildStatusChip('Missing Data', Icons.warning_outlined, Colors.orange, isCompact)),
-                                const SizedBox(width: 6),
-                                Expanded(child: _buildStatusChip('Incomplete', Icons.cancel_outlined, AppColors.error, isCompact)),
-                              ],
-                            ),
-                          ],
-                        );
-                      } else {
-                        // Use wrap for larger screens
-                        return Wrap(
-                          spacing: isCompact ? 6 : 8,
-                          runSpacing: isCompact ? 6 : 8,
-                          children: [
-                            _buildStatusChip('All', Icons.list_alt, null, isCompact),
-                            _buildStatusChip('Complete', Icons.check_circle_outline, AppColors.success, isCompact),
-                            _buildStatusChip('Missing Data', Icons.warning_outlined, Colors.orange, isCompact),
-                            _buildStatusChip('Incomplete', Icons.cancel_outlined, AppColors.error, isCompact),
-                          ],
-                        );
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: isCompact ? 10 : 12),
-            
-            // Sort Section - Responsive
-            Container(
-              padding: EdgeInsets.all(isCompact ? 12 : 16),
-              decoration: BoxDecoration(
-                color: AppColors.lightGrey.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.lightGrey.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  // Simple row layout for three filter options
                   Row(
                     children: [
-                      Icon(
-                        Icons.sort_rounded,
-                        color: AppColors.primary,
-                        size: isCompact ? 16 : 18,
-                      ),
-                      SizedBox(width: isCompact ? 6 : 8),
-                      Text(
-                        'SORT BY',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                          letterSpacing: 0.5,
-                          fontSize: isCompact ? 11 : 12,
-                        ),
-                      ),
+                      Expanded(child: _buildStatusChip('All', Icons.list_alt, null, isCompact)),
+                      const SizedBox(width: 4),
+                      Expanded(child: _buildStatusChip('Missing Data', Icons.warning_outlined, Colors.orange, isCompact)),
+                      const SizedBox(width: 4),
+                      Expanded(child: _buildStatusChip('Completed', Icons.check_circle_outline, AppColors.success, isCompact)),
                     ],
                   ),
-                  SizedBox(height: isCompact ? 8 : 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.lightGrey.withOpacity(0.25),
-                        width: 1,
-                      ),
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedSort,
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: isCompact ? 10 : 12,
-                          vertical: isCompact ? 10 : 12,
-                        ),
-                      ),
-                      style: TextStyle(
-                        fontSize: isCompact ? 13 : 14,
-                        color: AppColors.darkGrey,
-                      ),
-                      items: [
-                        DropdownMenuItem(
-                          value: 'section_number',
-                          child: Row(
-                            children: [
-                              Icon(Icons.numbers_rounded, size: isCompact ? 14 : 16, color: AppColors.grey),
-                              SizedBox(width: isCompact ? 6 : 8),
-                              Text('Section Number', style: TextStyle(fontSize: isCompact ? 12 : 14)),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'section_name',
-                          child: Row(
-                            children: [
-                              Icon(Icons.abc_rounded, size: isCompact ? 14 : 16, color: AppColors.grey),
-                              SizedBox(width: isCompact ? 6 : 8),
-                              Text('Section Name', style: TextStyle(fontSize: isCompact ? 12 : 14)),
-                            ],
-                          ),
-                        ),
-                        DropdownMenuItem(
-                          value: 'completion',
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle_outline_rounded, size: isCompact ? 14 : 16, color: AppColors.grey),
-                              SizedBox(width: isCompact ? 6 : 8),
-                              Text('Completion', style: TextStyle(fontSize: isCompact ? 12 : 14)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedSort = value;
-                          });
-                          widget.onSortChanged(value);
-                        }
-                      },
-                    ),
-                  ),
                 ],
-              ),
-            ),
-            
-            SizedBox(height: isCompact ? 10 : 12),
-            
-            // Missing Data Filter - Responsive
-            Container(
-              padding: EdgeInsets.all(isCompact ? 12 : 16),
-              decoration: BoxDecoration(
-                color: _showMissingDataOnly 
-                    ? Colors.orange.withOpacity(0.06)
-                    : AppColors.lightGrey.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _showMissingDataOnly 
-                      ? Colors.orange.withOpacity(0.25)
-                      : AppColors.lightGrey.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.filter_alt_rounded,
-                        color: _showMissingDataOnly ? Colors.orange : AppColors.primary,
-                        size: isCompact ? 16 : 18,
-                      ),
-                      SizedBox(width: isCompact ? 6 : 8),
-                      Text(
-                        'ADVANCED FILTER',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: _showMissingDataOnly ? Colors.orange : AppColors.primary,
-                          letterSpacing: 0.5,
-                          fontSize: isCompact ? 11 : 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: isCompact ? 8 : 10),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _showMissingDataOnly = !_showMissingDataOnly;
-                        });
-                        widget.onMissingDataFilter(_showMissingDataOnly);
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isCompact ? 6 : 8, 
-                          vertical: isCompact ? 4 : 6
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: isCompact ? 18 : 20,
-                              height: isCompact ? 18 : 20,
-                              decoration: BoxDecoration(
-                                color: _showMissingDataOnly 
-                                    ? Colors.orange 
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: _showMissingDataOnly 
-                                      ? Colors.orange 
-                                      : AppColors.grey,
-                                  width: 1.5,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: _showMissingDataOnly
-                                  ? Icon(
-                                      Icons.check_rounded,
-                                      size: isCompact ? 12 : 14,
-                                      color: Colors.white,
-                                    )
-                                  : null,
-                            ),
-                            SizedBox(width: isCompact ? 8 : 10),
-                            Expanded(
-                              child: Text(
-                                'Show Missing Data Only',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: _showMissingDataOnly 
-                                      ? Colors.orange.shade700
-                                      : AppColors.darkGrey,
-                                  fontSize: isCompact ? 12 : 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: isCompact ? 12 : 16),
-            
-            // Reset Button - Responsive
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary.withOpacity(0.08),
-                    AppColors.primary.withOpacity(0.04),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.15),
-                  width: 1,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.onClearFilters,
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      vertical: isCompact ? 12 : 14, 
-                      horizontal: isCompact ? 16 : 20
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.refresh_rounded,
-                          color: AppColors.primary,
-                          size: isCompact ? 18 : 20,
-                        ),
-                        SizedBox(width: isCompact ? 6 : 8),
-                        Text(
-                          isCompact ? 'RESET FILTERS' : 'RESET ALL FILTERS',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                            letterSpacing: 0.5,
-                            fontSize: isCompact ? 12 : 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ),
             ),
           ],
@@ -596,12 +266,12 @@ class _WarrantyClaimsFilterState extends State<WarrantyClaimsFilter> {
                 status,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: isCompact ? 10 : 11,
                   color: isSelected 
                       ? chipColor
                       : AppColors.darkGrey,
-                  fontSize: isCompact ? 11 : 12,
                 ),
-                overflow: TextOverflow.ellipsis,
+                overflow: TextOverflow.visible,
                 maxLines: 1,
               ),
             ),
@@ -614,8 +284,6 @@ class _WarrantyClaimsFilterState extends State<WarrantyClaimsFilter> {
   void _clearAllFilters() {
     setState(() {
       _selectedStatus = 'All';
-      _selectedSort = 'section_number';
-      _showMissingDataOnly = false;
       _searchController.clear();
     });
     widget.onStatusFilter('All');

@@ -203,158 +203,52 @@ class _WarrantyClaimCardState extends State<WarrantyClaimCard>
                       
                       const SizedBox(height: 12),
                       
-                      // Complaint with icon
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.orange.withOpacity(0.15),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Icon(
-                                Icons.report_problem_outlined,
-                                color: Colors.orange.shade700,
-                                size: 16,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'COMPLAINT DESCRIPTION',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.grey,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.claim.complaint,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.darkGrey,
-                                      height: 1.3,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      // Progress and Stats
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Completion Progress
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.assignment_outlined,
-                                size: 16,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'Sections: ${widget.claim.sections.length}/5 (${widget.claim.completionPercentage.toInt()}%)',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              // File Count
-                              if (widget.claim.fileCount > 0) ...[
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.attach_file,
-                                        size: 14,
-                                        color: AppColors.secondary,
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        '${widget.claim.fileCount}',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: AppColors.secondary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: widget.claim.completionPercentage / 100,
-                            backgroundColor: AppColors.lightGrey,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _getProgressColor(),
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      // Missing Data Warning
+                      // Missing Sections Display
                       if (widget.claim.hasMissingData) ...[
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.error.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.error.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: AppColors.error.withOpacity(0.3),
+                              color: AppColors.error.withOpacity(0.2),
+                              width: 1,
                             ),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.warning_outlined,
-                                size: 16,
-                                color: AppColors.error,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Missing data in ${widget.claim.missingSectionsCount} section${widget.claim.missingSectionsCount > 1 ? 's' : ''}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.error,
-                                    fontWeight: FontWeight.w600,
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Icon(
+                                      Icons.warning_outlined,
+                                      size: 16,
+                                      color: AppColors.error,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'MISSING INFORMATION',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.error,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: _buildMissingSectionChips(),
                               ),
                             ],
                           ),
@@ -489,13 +383,45 @@ class _WarrantyClaimCardState extends State<WarrantyClaimCard>
     );
   }
 
-  Color _getProgressColor() {
-    if (widget.claim.completionPercentage == 100) {
-      return widget.claim.hasMissingData ? Colors.orange : AppColors.success;
-    } else if (widget.claim.completionPercentage >= 60) {
-      return Colors.orange;
-    } else {
-      return AppColors.error;
+  List<Widget> _buildMissingSectionChips() {
+    final missingSections = widget.claim.missingSections;
+    return missingSections.map((section) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: AppColors.error.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          _getSectionDisplayName(section.sectionNumber),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.error,
+            fontWeight: FontWeight.w600,
+            fontSize: 11,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  String _getSectionDisplayName(int sectionNumber) {
+    switch (sectionNumber) {
+      case 1:
+        return 'Section 1: Warranty Claim Summary';
+      case 2:
+        return 'Section 2: Attachments Overview';
+      case 3:
+        return 'Section 3: Technician Narrative';
+      case 4:
+        return 'Section 4: Service Report Narrative';
+      case 5:
+        return 'Section 5: Claim Submission Recommendation';
+      default:
+        return 'Section $sectionNumber';
     }
   }
 

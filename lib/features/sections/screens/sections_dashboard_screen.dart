@@ -142,7 +142,7 @@ class _SectionsDashboardScreenState extends State<SectionsDashboardScreen>
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => context.go(AppRouter.home),
+                        onPressed: () => context.go(AppRouter.warrantyClaims),
                         icon: const Icon(
                           Icons.arrow_back_ios,
                           color: AppColors.primary,

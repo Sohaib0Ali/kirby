@@ -67,58 +67,28 @@ class WarrantyClaimsStats extends StatelessWidget {
                 
                 if (isCompact) {
                   // Stacked layout for smaller screens
-                  return Column(
+                  return Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatItem(
-                              context,
-                              'Total Claims',
-                              stats['total_claims']?.toString() ?? '0',
-                              Icons.description_outlined,
-                              AppColors.primary,
-                              isCompact: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildStatItem(
-                              context,
-                              'Completed',
-                              stats['complete_claims']?.toString() ?? '0',
-                              Icons.check_circle_outline,
-                              AppColors.success,
-                              isCompact: true,
-                            ),
-                          ),
-                        ],
+                      Expanded(
+                        child: _buildStatItem(
+                          context,
+                          'Total Claims',
+                          stats['total_claims']?.toString() ?? '0',
+                          Icons.description_outlined,
+                          AppColors.primary,
+                          isCompact: true,
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatItem(
-                              context,
-                              'Missing Data',
-                              stats['missing_data_claims']?.toString() ?? '0',
-                              Icons.warning_outlined,
-                              Colors.orange,
-                              isCompact: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildStatItem(
-                              context,
-                              'Incomplete',
-                              stats['incomplete_claims']?.toString() ?? '0',
-                              Icons.cancel_outlined,
-                              AppColors.error,
-                              isCompact: true,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatItem(
+                          context,
+                          'Missing Data',
+                          stats['missing_data_claims']?.toString() ?? '0',
+                          Icons.warning_outlined,
+                          Colors.orange,
+                          isCompact: true,
+                        ),
                       ),
                     ],
                   );
@@ -135,17 +105,7 @@ class WarrantyClaimsStats extends StatelessWidget {
                           AppColors.primary,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildStatItem(
-                          context,
-                          'Completed',
-                          stats['complete_claims']?.toString() ?? '0',
-                          Icons.check_circle_outline,
-                          AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: _buildStatItem(
                           context,
@@ -153,16 +113,6 @@ class WarrantyClaimsStats extends StatelessWidget {
                           stats['missing_data_claims']?.toString() ?? '0',
                           Icons.warning_outlined,
                           Colors.orange,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildStatItem(
-                          context,
-                          'Incomplete',
-                          stats['incomplete_claims']?.toString() ?? '0',
-                          Icons.cancel_outlined,
-                          AppColors.error,
                         ),
                       ),
                     ],

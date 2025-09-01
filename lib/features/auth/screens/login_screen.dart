@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _isLoading = false;
         });
-        context.go(AppRouter.home);
+        context.go(AppRouter.warrantyClaims);
       }
     }
   }

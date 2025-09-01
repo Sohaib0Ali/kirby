@@ -71,7 +71,7 @@ class _SignupScreenState extends State<SignupScreen> {
         setState(() {
           _isLoading = false;
         });
-        context.go(AppRouter.home);
+        context.go(AppRouter.warrantyClaims);
       }
     }
   }
